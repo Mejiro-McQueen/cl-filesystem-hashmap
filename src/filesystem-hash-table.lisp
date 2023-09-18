@@ -10,41 +10,41 @@
 (defun make-filesystem-hash-table (&key root)
   "ARGUMENTS:
      root: If true, signifies that this table is a root filesystem"
-  (let ((res (make-hash-table)))
+  (let ((res (make-hash-table :test 'equal)))
 	(when root
 	  (register-filesystem-hash-table res res '/)
-	  (setf (gethash (intern "/") res) res))
+	  (setf (gethash "/" res) res))
 	res))
 
 (defun add-unique-key (key value table)
   (check-type key symbol)
   (check-type table hash-table)
   (when (gethash key table)
-	(error 'non-unique-key :key key :value value :table table))
-  (setf (gethash key table) value))
+	(error 'non-unique-key :key (symbol-name key) :value value :table table))
+  (setf (gethash (symbol-name key) table) value))
 
 (defun register-filesystem-hash-table (root-table table table-key)
   "Add and register a table to a root table"
-  (setf (gethash (intern "../") table) root-table)
-  (setf (gethash (intern "./") table) table)
+  (setf (gethash "../" table) root-table)
+  (setf (gethash "./" table) table)
   (add-unique-key table-key table root-table)
-  (let ((root (gethash (intern "/") root-table)))
-	(setf (gethash (intern "/") table) root)))
+  (let ((root (gethash "/" root-table)))
+	(setf (gethash "/" table) root)))
 
 (defun find-key-by-path (requested-key current-table)
   (unless current-table
-	#+ *debug-mode*
-	(print "No Hash Table Found: Are your references broken?")
+	;;#+ *debug-mode*
+	;;(print "No Hash Table Found: Are your references broken?")
 	(return-from find-key-by-path nil))
   
   (labels ((format-path (string-list)
 			 (reduce (lambda (str1 str2)
 					   (concatenate 'string str1 "/" (if (equalp str2 :BACK) "../" str2))) string-list :initial-value ".")))
 	(multiple-value-bind (flag path-components file) (uiop::split-unix-namestring-directory-components requested-key)
-	  (let* ((target (intern file))
+	  (let* ((target file)
 			 (match-in-current-table? (gethash target current-table))
-			 (parent-table (gethash (intern "../") current-table))
-			 (root-table (gethash (intern "/") current-table))
+			 (parent-table (gethash "../" current-table))
+			 (root-table (gethash "/" current-table))
 			 (next-requested-key (format-path (append (cdr path-components) (list (format nil "~A" target))))))
 
 		;; #+*DEBUG-MODE*
@@ -59,31 +59,31 @@
 	
 		(case flag
 		  (:absolute
-		   #+ *DEBUG-MODE*
-		   (print 'ABSOLUTE)
-		   ;Enforce Recursion
+		   ;#+ *DEBUG-MODE*
+		   ;(print 'ABSOLUTE)
+										;Force Recursion
 		   (return-from find-key-by-path (find-key-by-path next-requested-key root-table)))
 
 		  (:relative
 		   (when (member :BACK path-components)
-			 #+ *DEBUG-MODE*
-			 (print 'Go-Back)
+			; #+ *DEBUG-MODE*
+			 ;(print 'Go-Back)
 			 (when (equal current-table root-table)
 			   (warn "Cycle detected: Attempted to go to parent table but ended up at the same place"))
 			 (return-from find-key-by-path (find-key-by-path next-requested-key parent-table)))
 
 		   (when path-components
-			 #+ *DEBUG-MODE*
-			 (print 'Keep-Looking)
+			 ;#+ *DEBUG-MODE*
+			 ;(print 'Keep-Looking)
 			 (return-from find-key-by-path (find-key-by-path next-requested-key
-															 (gethash (intern (car path-components)) current-table))))
+															 (gethash (car path-components) current-table))))
 
 		   (when match-in-current-table?
-			 #+ *DEBUG-MODE*
-			 (print 'GET!)
+			 ;#+ *DEBUG-MODE*
+			 ;(print 'GET!)
 			 (return-from find-key-by-path match-in-current-table?))
 
 		   (unless match-in-current-table?
-			 #+ *DEBUG-MODE*
-			 (print 'Path-Exhausted-No-Match)
+			 ;#+ *DEBUG-MODE*
+			 ;(print 'Path-Exhausted-No-Match)
 			 nil)))))))

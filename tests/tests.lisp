@@ -137,9 +137,10 @@
 	;(signals warn (find-key-by-path "../../McQueen" MEJIRO-1) '|Mejiro-McQueen|)
 	))
   
-
 (test find-key-in-disconnected-path
   (with-fixture-hash-table-tree
 	"User wants to find a key, but the table path is disconnected"
 	(is (equal (find-key-by-path "../../Daiwa" SPICA-Injured) nil))))
 
+(with-fixture-hash-table-tree
+	(alexandria:hash-table-keys Tracen))
