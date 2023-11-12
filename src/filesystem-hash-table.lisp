@@ -12,24 +12,28 @@
      root: If true, signifies that this table is a root filesystem"
   (let ((res (make-hash-table :test 'equal)))
 	(when root
-	  (register-filesystem-hash-table res res '/)
+	  (link-filesystem-hash-tables res res "/")
 	  (setf (gethash "/" res) res))
 	res))
 
 (defun add-unique-key (key value table)
-  (check-type key symbol)
+  ;Used to contain symbols, but it devolves intro string comparison when making uninterned symbols, since uinterned is guaranteed never to eq
+  ;Can not intern symbol since the entire point is to keep symbols from clashing in different space systems
+  ;Just use strings to keep things simple.
+  ;The current usecase only needs strings
+  (check-type key string)
   (check-type table hash-table)
   (when (gethash key table)
-	(error 'non-unique-key :key (symbol-name key) :value value :table table))
-  (setf (gethash (symbol-name key) table) value))
+	(error 'non-unique-key :key key :value value :table table))
+  (setf (gethash key table) value))
 
-(defun register-filesystem-hash-table (root-table table table-key)
-  "Add and register a table to a root table"
-  (setf (gethash "../" table) root-table)
-  (setf (gethash "./" table) table)
-  (add-unique-key table-key table root-table)
+(defun link-filesystem-hash-tables (root-table child-table child-table-key)
+  "Link a table to a root table"
+  (setf (gethash "../" child-table) root-table)
+  (setf (gethash "./" child-table) child-table)
+  (add-unique-key child-table-key child-table root-table)
   (let ((root (gethash "/" root-table)))
-	(setf (gethash "/" table) root)))
+	(setf (gethash "/" child-table) root)))
 
 (defun find-key-by-path (requested-key current-table)
   (unless current-table
@@ -87,3 +91,4 @@
 			 ;#+ *DEBUG-MODE*
 			 ;(print 'Path-Exhausted-No-Match)
 			 nil)))))))
+

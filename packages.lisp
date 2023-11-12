@@ -4,4 +4,4 @@
   (:export :add-unique-key
            :find-key-by-path
 		   :make-filesystem-hash-table
-           :register-filesystem-hash-table))
+           :link-filesystem-hash-tables))
